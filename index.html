@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>日本旅行隨手記 & 記帳助手</title>
+  <title>旅行隨手記 & 記帳助手 (Enhanced Edition)</title>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
     body { background: #f8fafc; color: #0f172a; padding-bottom: 75px; }
@@ -25,7 +25,7 @@
     .page { display: none; padding: 14px; }
     .page.active { display: block; }
 
-    /* 快捷打卡按鈕 (改為 2 個平行大按鈕) */
+    /* 快捷打卡按鈕 */
     .quick-btns { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 16px; }
     .q-btn { background: #e0e7ff; color: #3730a3; border: 1px solid #c7d2fe; padding: 12px 6px; border-radius: 8px; font-weight: bold; font-size: 0.9rem; cursor: pointer; text-align: center; }
 
@@ -64,11 +64,19 @@
     .summary-row { display: flex; justify-content: space-between; font-size: 1.05rem; font-weight: bold; margin-bottom: 6px; }
     .summary-grand { border-top: 1px solid #334155; padding-top: 8px; margin-top: 6px; font-size: 1.15rem; color: #facc15; }
 
+    /* 對數 UI 樣式 */
+    .recon-box { background: #fff; border-radius: 12px; padding: 14px; margin-bottom: 12px; border: 1px solid #e2e8f0; box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
+    .recon-header { font-size: 0.85rem; font-weight: bold; color: #475569; margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center; }
+    .coin-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; background: #f8fafc; padding: 10px; border-radius: 8px; border: 1px border #cbd5e1; margin-top: 8px; }
+    .coin-grid div { font-size: 0.75rem; display: flex; flex-direction: column; }
+    .coin-grid input { padding: 4px; font-size: 0.85rem; text-align: center; border: 1px solid #cbd5e1; border-radius: 4px; }
+
+    /* 固定底部 Tab Bar (延伸至 6 個按鈕) */
     .tab-bar { 
       position: fixed; bottom: 0; left: 0; width: 100%; height: 60px; background: #fff; 
       display: flex; border-top: 1px solid #cbd5e1; z-index: 1000; box-shadow: 0 -2px 10px rgba(0,0,0,0.05);
     }
-    .tab-btn { flex: 1; border: none; background: none; font-size: 0.75rem; color: #64748b; font-weight: bold; cursor: pointer; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+    .tab-btn { flex: 1; border: none; background: none; font-size: 0.7rem; color: #64748b; font-weight: bold; cursor: pointer; display: flex; flex-direction: column; align-items: center; justify-content: center; }
     .tab-btn.active { color: #2563eb; border-top: 3px solid #2563eb; background: #f8fafc; }
   </style>
 </head>
@@ -81,7 +89,7 @@
 
   <div id="notification-bar"></div>
 
-  <!-- PAGE 1: ⚡ 快速打卡 (只保留「到達」與「離開」) -->
+  <!-- PAGE 1: ⚡ 快速打卡 -->
   <div id="page-track" class="page active">
     <div class="quick-btns">
       <button class="q-btn" onclick="quickFill('到達')">📍 到達</button>
@@ -123,9 +131,9 @@
 
       <label>付款方式</label>
       <select id="expMethod">
+        <option value="CASH">💵 Cash 現金</option>
         <option value="CREDIT">💳 Credit Card</option>
         <option value="IC">🐧 IC 卡 (Suica/Pasmo)</option>
-        <option value="CASH">💵 Cash 現金</option>
       </select>
 
       <label>店名 / 備註</label>
@@ -135,7 +143,57 @@
     </div>
   </div>
 
-  <!-- PAGE 3: 📅 時間表 -->
+  <!-- PAGE 3: 🌙 每晚現金對數 (NEW FEATURE) -->
+  <div id="page-reconcile" class="page">
+    <div class="recon-box" style="background: #e0e7ff; border-color: #c7d2fe;">
+      <div class="recon-header" style="color: #3730a3;">
+        <span>🔍 當前選定對數日期</span>
+        <button onclick="resetBaselinePrompt()" style="font-size: 0.75rem; background: #4338ca; color: white; border: none; padding: 3px 8px; border-radius: 4px; cursor: pointer;">重置起點基準</button>
+      </div>
+      <input type="date" id="reconDate" style="width: 100%; padding: 8px; border-radius: 6px; border: 1px solid #a5b4fc; font-weight: bold;" onchange="renderReconciliation()">
+      <div id="baseline-status" style="font-size: 0.75rem; color: #4338ca; margin-top: 6px;">載入中...</div>
+    </div>
+
+    <!-- Step 1: 推算結果 -->
+    <div class="recon-box">
+      <div class="recon-header">1. 系統推算現金餘額</div>
+      <div style="font-size: 0.85rem; space-y: 4px;">
+        <div class="stat-row"><span>上次盤點/基準餘額:</span><strong id="recon-last-balance">¥0</strong></div>
+        <div class="stat-row" style="color: #dc2626;"><span>期間現金總支出:</span><strong id="recon-cash-expense">-¥0</strong></div>
+        <div class="stat-row" style="border-top: 1px solid #cbd5e1; font-size: 1rem; margin-top: 4px; padding-top: 4px;">
+          <span>理論銀包應有金額:</span><strong style="color: #2563eb;" id="recon-expected">¥0</strong>
+        </div>
+      </div>
+    </div>
+
+    <!-- Step 2: 點算輸入 -->
+    <div class="recon-box">
+      <div class="recon-header">
+        <span>2. 今晚銀包實體金額</span>
+        <button onclick="toggleCoinDrawer()" style="font-size: 0.75rem; color: #2563eb; background: none; border: none; text-decoration: underline; cursor: pointer;">🪙 面額計算器</button>
+      </div>
+      <input type="number" id="reconActualInput" placeholder="輸入實際點算到的日圓總額" style="width: 100%; padding: 10px; font-size: 1.1rem; font-weight: bold; border: 2px solid #94a3b8; border-radius: 8px;" oninput="onActualInput()">
+
+      <!-- 面額計算器 Drawer -->
+      <div id="coinDrawer" style="display: none;" class="coin-grid">
+        <div><span>萬円 (10000)</span><input type="number" min="0" data-val="10000" oninput="calcCoinTotal()" class="coin-qty"></div>
+        <div><span>五千円 (5000)</span><input type="number" min="0" data-val="5000" oninput="calcCoinTotal()" class="coin-qty"></div>
+        <div><span>千円 (1000)</span><input type="number" min="0" data-val="1000" oninput="calcCoinTotal()" class="coin-qty"></div>
+        <div><span>500円</span><input type="number" min="0" data-val="500" oninput="calcCoinTotal()" class="coin-qty"></div>
+        <div><span>100円</span><input type="number" min="0" data-val="100" oninput="calcCoinTotal()" class="coin-qty"></div>
+        <div><span>50/10/5/1円</span><input type="number" min="0" data-val="10" oninput="calcCoinTotal()" class="coin-qty"></div>
+      </div>
+    </div>
+
+    <!-- Step 3: 差額與對數確認 -->
+    <div id="reconResultCard" class="recon-box" style="display: none;">
+      <div id="reconBadge" style="display: inline-block; padding: 3px 8px; border-radius: 4px; font-size: 0.75rem; font-weight: bold; margin-bottom: 6px;">--</div>
+      <div id="reconMsg" style="font-size: 0.85rem; margin-bottom: 10px;">--</div>
+      <button id="btnConfirmRecon" class="btn-submit" onclick="submitReconciliation()">確認對數並鎖定當日</button>
+    </div>
+  </div>
+
+  <!-- PAGE 4: 📅 時間表 -->
   <div id="page-timetable" class="page">
     <div class="filter-box">
       <input type="date" id="ttStartDate">
@@ -152,7 +210,7 @@
     </div>
   </div>
 
-  <!-- PAGE 4: 🛠️ 管理區 -->
+  <!-- PAGE 5: 🛠️ 管理區 -->
   <div id="page-manage" class="page">
     <div class="form-group" style="background: #eff6ff; border: 1px solid #bfdbfe;">
       <label style="color: #1e40af; font-size: 0.9rem;">✈️ 旅行行程管理 (Trip Master)</label>
@@ -174,7 +232,7 @@
     <div id="manage-expense-list">載入中...</div>
   </div>
 
-  <!-- PAGE 5: 📊 統計開支 -->
+  <!-- PAGE 6: 📊 統計開支 -->
   <div id="page-analytics" class="page">
     <div class="filter-box">
       <input type="date" id="anaStartDate">
@@ -211,6 +269,7 @@
   <div class="tab-bar">
     <button class="tab-btn active" onclick="switchTab('page-track', this)"><span>⚡</span>打卡</button>
     <button class="tab-btn" onclick="switchTab('page-expense', this)"><span>💸</span>記帳</button>
+    <button class="tab-btn" onclick="switchTab('page-reconcile', this)"><span>🌙</span>對數</button>
     <button class="tab-btn" onclick="switchTab('page-timetable', this)"><span>📅</span>時間表</button>
     <button class="tab-btn" onclick="switchTab('page-analytics', this)"><span>📊</span>統計</button>
     <button class="tab-btn" onclick="switchTab('page-manage', this)"><span>🛠️</span>管理</button>
@@ -220,14 +279,14 @@
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
     import { getFirestore, collection, addDoc, getDocs, doc, deleteDoc, updateDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
-  const firebaseConfig = {
-    apiKey: "AIzaSyCa4lyhpiBcTdPAp_6DN0_elzYwZnCzirE",
-    authDomain: "travelremarks-b4f76.firebaseapp.com",
-    projectId: "travelremarks-b4f76",
-    storageBucket: "travelremarks-b4f76.firebasestorage.app",
-    messagingSenderId: "333967646842",
-    appId: "1:333967646842:web:4e5c4d278a211640899bc3"
-  };
+    const firebaseConfig = {
+      apiKey: "AIzaSyCa4lyhpiBcTdPAp_6DN0_elzYwZnCzirE",
+      authDomain: "travelremarks-b4f76.firebaseapp.com",
+      projectId: "travelremarks-b4f76",
+      storageBucket: "travelremarks-b4f76.firebasestorage.app",
+      messagingSenderId: "333967646842",
+      appId: "1:333967646842:web:4e5c4d278a211640899bc3"
+    };
 
     const app = initializeApp(firebaseConfig);
     const db = getFirestore(app);
@@ -243,6 +302,7 @@
     document.getElementById('eventTime').value = timeStr;
     document.getElementById('expDate').value = todayStr;
     document.getElementById('expTime').value = timeStr;
+    document.getElementById('reconDate').value = todayStr;
 
     function showNotification(msg, type = 'success') {
       const bar = document.getElementById('notification-bar');
@@ -305,6 +365,7 @@
       if (activePage === 'page-timetable') renderTimetable();
       if (activePage === 'page-manage') renderManageList();
       if (activePage === 'page-analytics') renderAnalytics();
+      if (activePage === 'page-reconcile') renderReconciliation();
     }
 
     function applyTripDates() {
@@ -371,6 +432,7 @@
       if (pageId === 'page-timetable') renderTimetable();
       if (pageId === 'page-manage') renderManageList();
       if (pageId === 'page-analytics') renderAnalytics();
+      if (pageId === 'page-reconcile') renderReconciliation();
     }
 
     window.quickFill = function(prefix) {
@@ -432,6 +494,172 @@
       finally { btn.innerText = "💵 記錄開支與地址"; btn.disabled = false; }
     }
 
+    // --- 🌙 核心：對數 (RECONCILIATION) 功能邏輯 ---
+    let reconExpectedVal = 0;
+    let reconDiffVal = 0;
+
+    window.renderReconciliation = async function() {
+      const selectedDate = document.getElementById('reconDate').value;
+      const statusEl = document.getElementById('baseline-status');
+      statusEl.innerText = "正在聯機對算數據...";
+
+      try {
+        // 1. Fetch reconciliation logs for current trip
+        const reconSnap = await getDocs(collection(db, "reconciliations"));
+        const logs = [];
+        reconSnap.forEach(d => {
+          const data = d.data();
+          if (data.tripId === currentTripId) logs.push(data);
+        });
+
+        // Find last known baseline log strictly BEFORE selectedDate
+        const pastLogs = logs.filter(l => l.reconDate < selectedDate).sort((a,b) => a.reconDate.localeCompare(b.reconDate));
+        const lastLog = pastLogs.length > 0 ? pastLogs[pastLogs.length - 1] : null;
+
+        let lastBalance = 0;
+        let startDateCutoff = '';
+
+        if (lastLog) {
+          lastBalance = Number(lastLog.actualAmount || 0);
+          startDateCutoff = lastLog.reconDate;
+          statusEl.innerText = `基準點：${lastLog.reconDate} 盤點金額 (¥${lastBalance.toLocaleString()})`;
+        } else {
+          statusEl.innerText = `尚無此前對數紀錄，預設初始現金金額為 ¥0`;
+        }
+
+        // 2. Fetch Expenses AFTER startDateCutoff and UP TO selectedDate
+        const expSnap = await getDocs(collection(db, "expenses"));
+        let cashExpenseSum = 0;
+
+        expSnap.forEach(d => {
+          const data = d.data();
+          if (data.tripId === currentTripId && data.paymentMethod === 'CASH' && (data.currency || 'JPY') === 'JPY') {
+            const expD = data.expDate;
+            const isAfterLast = !startDateCutoff || expD > startDateCutoff;
+            const isBeforeEqCurr = expD <= selectedDate;
+            if (isAfterLast && isBeforeEqCurr) {
+              cashExpenseSum += Number(data.amount || 0);
+            }
+          }
+        });
+
+        reconExpectedVal = lastBalance - cashExpenseSum;
+
+        document.getElementById('recon-last-balance').innerText = `¥${lastBalance.toLocaleString()}`;
+        document.getElementById('recon-cash-expense').innerText = `-¥${cashExpenseSum.toLocaleString()}`;
+        document.getElementById('recon-expected').innerText = `¥${reconExpectedVal.toLocaleString()}`;
+
+        onActualInput();
+      } catch(e) {
+        statusEl.innerText = "加載失敗: " + e.message;
+      }
+    }
+
+    window.onActualInput = function() {
+      const actualVal = document.getElementById('reconActualInput').value;
+      const resultCard = document.getElementById('reconResultCard');
+
+      if (actualVal === '') {
+        resultCard.style.display = 'none';
+        return;
+      }
+
+      const actualNum = Number(actualVal);
+      reconDiffVal = actualNum - reconExpectedVal;
+      resultCard.style.display = 'block';
+
+      const badge = document.getElementById('reconBadge');
+      const msg = document.getElementById('reconMsg');
+      const btn = document.getElementById('btnConfirmRecon');
+
+      if (reconDiffVal === 0) {
+        badge.style.background = "#d1fae5"; badge.style.color = "#065f46"; badge.innerText = "🎉 金額完美吻合";
+        msg.innerText = "實體現金與記帳推算完全相同！";
+        btn.innerText = "確認對數並鎖定當日";
+      } else if (reconDiffVal < 0) {
+        const absDiff = Math.abs(reconDiffVal);
+        badge.style.background = "#fef3c7"; badge.style.color = "#92400e"; badge.innerText = `⚠️ 盤虧 少了 ¥${absDiff.toLocaleString()}`;
+        msg.innerText = `銀包少了 ¥${absDiff}。按確認將自動寫入一筆「平帳支出」。`;
+        btn.innerText = `自動補一筆 -¥${absDiff} 支出並鎖定`;
+      } else {
+        badge.style.background = "#dbeafe"; badge.style.color = "#1e40af"; badge.innerText = `💡 盤盈 多了 ¥${reconDiffVal.toLocaleString()}`;
+        msg.innerText = `銀包多了 ¥${reconDiffVal}。按確認將自動記錄差額並鎖定。`;
+        btn.innerText = `平帳並鎖定當日`;
+      }
+    }
+
+    window.submitReconciliation = async function() {
+      const actualVal = document.getElementById('reconActualInput').value;
+      const selectedDate = document.getElementById('reconDate').value;
+      if (!actualVal) return showNotification("請輸入實體金額", "error");
+
+      const actualNum = Number(actualVal);
+
+      try {
+        // If there's a deficit, add expense discrepancy transaction
+        if (reconDiffVal < 0) {
+          await addDoc(collection(db, "expenses"), {
+            tripId: currentTripId,
+            amount: Math.abs(reconDiffVal),
+            currency: 'JPY',
+            expDate: selectedDate,
+            expTime: '23:59',
+            paymentMethod: 'CASH',
+            shopName: '雜項 / 自動對數差額平帳'
+          });
+        }
+
+        // Save Reconciliation record
+        await addDoc(collection(db, "reconciliations"), {
+          tripId: currentTripId,
+          reconDate: selectedDate,
+          expectedAmount: reconExpectedVal,
+          actualAmount: actualNum,
+          discrepancy: reconDiffVal
+        });
+
+        showNotification("🌙 對數成功並已歸檔！");
+        document.getElementById('reconActualInput').value = '';
+        renderReconciliation();
+      } catch(e) {
+        showNotification("對數失敗: " + e.message, "error");
+      }
+    }
+
+    window.resetBaselinePrompt = async function() {
+      const selectedDate = document.getElementById('reconDate').value;
+      const baseVal = prompt(`請輸入 ${selectedDate} 的全新實體銀包金額（將以此作為新基準點）：`);
+      if (baseVal !== null && baseVal !== '') {
+        await addDoc(collection(db, "reconciliations"), {
+          tripId: currentTripId,
+          reconDate: selectedDate,
+          expectedAmount: Number(baseVal),
+          actualAmount: Number(baseVal),
+          discrepancy: 0,
+          isReset: true
+        });
+        showNotification("基準點重置成功！");
+        renderReconciliation();
+      }
+    }
+
+    window.toggleCoinDrawer = function() {
+      const el = document.getElementById('coinDrawer');
+      el.style.display = el.style.display === 'none' ? 'grid' : 'none';
+    }
+
+    window.calcCoinTotal = function() {
+      let sum = 0;
+      document.querySelectorAll('.coin-qty').forEach(i => {
+        const val = Number(i.dataset.val);
+        const qty = Number(i.value) || 0;
+        sum += val * qty;
+      });
+      document.getElementById('reconActualInput').value = sum;
+      onActualInput();
+    }
+
+    // --- TIMETABLE, ANALYTICS, MANAGE (原有功能保留) ---
     window.renderTimetable = async function() {
       const startStr = document.getElementById('ttStartDate').value;
       const endStr = document.getElementById('ttEndDate').value;

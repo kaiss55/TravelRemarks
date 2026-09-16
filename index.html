@@ -294,9 +294,14 @@
     let tripsList = [];
     let currentTripId = '';
 
-    const now = new Date();
-    const todayStr = now.toISOString().split('T')[0];
-    const timeStr = now.toTimeString().substring(0, 5);
+// ✅ 修正代碼（精確抓取本地/日本時區日期與時間）
+const now = new Date();
+const year = now.getFullYear();
+const month = String(now.getMonth() + 1).padStart(2, '0');
+const day = String(now.getDate()).padStart(2, '0');
+
+const todayStr = `${year}-${month}-${day}`;
+const timeStr = now.toTimeString().substring(0, 5);
 
     document.getElementById('eventDate').value = todayStr;
     document.getElementById('eventTime').value = timeStr;

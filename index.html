@@ -11,40 +11,42 @@
     header { background: #2563eb; color: white; padding: 12px; text-align: center; }
     header h1 { font-size: 1.1rem; }
 
-    /* 頁面分頁 */
     .page { display: none; padding: 14px; }
     .page.active { display: block; }
 
-    /* Tab 1: 快捷按鈕 */
     .quick-btns { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 16px; }
     .q-btn { background: #e0e7ff; color: #3730a3; border: 1px solid #c7d2fe; padding: 12px 6px; border-radius: 8px; font-weight: bold; font-size: 0.85rem; cursor: pointer; }
-    .q-btn:active { background: #c7d2fe; }
 
-    /* 表單區塊 */
     .form-group { background: #fff; padding: 16px; border-radius: 12px; box-shadow: 0 1px 4px rgba(0,0,0,0.06); margin-bottom: 12px; }
     .form-group label { font-size: 0.8rem; color: #64748b; font-weight: bold; display: block; margin-bottom: 4px; }
     .form-group input, .form-group select { width: 100%; padding: 10px; border: 1px solid #cbd5e1; border-radius: 6px; margin-bottom: 12px; font-size: 0.95rem; }
     
     .btn-submit { width: 100%; padding: 12px; background: #2563eb; color: #fff; border: none; border-radius: 8px; font-weight: bold; font-size: 1rem; cursor: pointer; }
-    .btn-submit:active { background: #1d4ed8; }
 
-    /* Tab 3: Timetable */
+    /* Date Range 篩選列 */
+    .filter-box { background: #fff; padding: 10px; border-radius: 8px; margin-bottom: 10px; display: flex; gap: 8px; align-items: center; box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
+    .filter-box input { padding: 6px; border: 1px solid #cbd5e1; border-radius: 4px; font-size: 0.8rem; width: 100%; }
+
+    /* Timetable 樣式 */
     .timetable-container { overflow-x: auto; background: #fff; border-radius: 8px; box-shadow: 0 1px 4px rgba(0,0,0,0.08); }
     table.tt-table { width: 100%; border-collapse: collapse; min-width: 480px; text-align: center; font-size: 0.8rem; }
     table.tt-table th, table.tt-table td { border: 1px solid #cbd5e1; padding: 6px 4px; vertical-align: top; }
-    table.tt-table th { background: #f1f5f9; color: #334155; }
-    .weather-header { font-size: 0.75rem; color: #64748b; font-weight: normal; margin-top: 2px; }
+    table.tt-table th { background: #f1f5f9; color: #334155; white-space: nowrap; }
     
     .cell-event { background: #eff6ff; color: #1e40af; border: 1px solid #bfdbfe; border-radius: 4px; padding: 6px; font-size: 0.75rem; text-align: left; margin-bottom: 4px; }
     .cell-address { font-size: 0.65rem; color: #475569; margin-top: 3px; border-top: 1px dashed #cbd5e1; padding-top: 2px; }
     .cell-gps { font-size: 0.65rem; color: #0284c7; text-decoration: none; display: inline-block; margin-top: 2px; font-weight: bold; }
 
-    /* 底部 Tab 導覽列 */
-    .tab-bar {
-      position: fixed; bottom: 0; left: 0; width: 100%; height: 55px; background: #fff;
-      display: flex; border-top: 1px solid #e2e8f0; z-index: 100;
-    }
-    .tab-btn { flex: 1; border: none; background: none; font-size: 0.85rem; color: #64748b; font-weight: bold; cursor: pointer; }
+    /* 紀錄管理清單卡片 (Tab 4) */
+    .entry-card { background: #fff; padding: 12px; border-radius: 8px; margin-bottom: 8px; border: 1px solid #e2e8f0; display: flex; justify-content: space-between; align-items: center; }
+    .entry-info { font-size: 0.85rem; }
+    .entry-date { font-size: 0.75rem; color: #64748b; }
+    .btn-danger { background: #ef4444; color: white; border: none; padding: 6px 10px; border-radius: 4px; font-size: 0.75rem; cursor: pointer; }
+    .btn-edit { background: #f59e0b; color: white; border: none; padding: 6px 10px; border-radius: 4px; font-size: 0.75rem; cursor: pointer; margin-right: 4px; }
+
+    /* 底部 Tab Bar */
+    .tab-bar { position: fixed; bottom: 0; left: 0; width: 100%; height: 55px; background: #fff; display: flex; border-top: 1px solid #e2e8f0; z-index: 100; }
+    .tab-btn { flex: 1; border: none; background: none; font-size: 0.8rem; color: #64748b; font-weight: bold; cursor: pointer; }
     .tab-btn.active { color: #2563eb; border-top: 3px solid #2563eb; }
   </style>
 </head>
@@ -65,13 +67,10 @@
     <div class="form-group">
       <label>行程 / 地點描述</label>
       <input type="text" id="eventDetail" placeholder="例如：JR 山手線 / 一蘭拉麵">
-      
       <label>對應時間格</label>
       <input type="time" id="eventTime">
-      
       <label>對應日期</label>
       <input type="date" id="eventDate">
-
       <button class="btn-submit" id="btnSaveEvent" onclick="saveEvent()">📍 標記並記錄 GPS 與地址</button>
     </div>
   </div>
@@ -81,38 +80,42 @@
     <div class="form-group">
       <label>金額 (¥ / HKD)</label>
       <input type="number" id="expAmount" placeholder="0" inputmode="numeric">
-
       <label>付款方式</label>
       <select id="expMethod">
         <option value="CREDIT">💳 Credit Card</option>
         <option value="IC">🐧 IC 卡 (Suica/Pasmo)</option>
         <option value="CASH">💵 Cash 現金</option>
       </select>
-
       <label>店名 / 備註 (可留空)</label>
       <input type="text" id="expShop" placeholder="例如：FamilyMart / 買藥妝">
-
       <button class="btn-submit" id="btnSaveExpense" style="background: #059669;" onclick="saveExpense()">💵 記錄開支與地址</button>
     </div>
   </div>
 
-  <!-- PAGE 3: 📅 矩陣時間表 -->
+  <!-- PAGE 3: 📅 動態 Date Range 時間表 -->
   <div id="page-timetable" class="page">
+    <div class="filter-box">
+      <input type="date" id="ttStartDate">
+      <span>至</span>
+      <input type="date" id="ttEndDate">
+      <button style="padding: 6px 12px; background: #2563eb; color: white; border: none; border-radius: 4px;" onclick="renderTimetable()">生成</button>
+    </div>
+
     <div class="timetable-container">
       <table class="tt-table">
-        <thead>
-          <tr>
-            <th style="width: 50px;">Time</th>
-            <th>20/9 (日)<div class="weather-header">🌤️ 13-4°</div></th>
-            <th>21/9 (一)<div class="weather-header">☀️ 16-5°</div></th>
-            <th>22/9 (二)<div class="weather-header">☀️ 17-5°</div></th>
-          </tr>
-        </thead>
-        <tbody id="timetable-body">
-          <!-- 由 JS 自動渲染 07:00 ~ 23:00 時間列 -->
-        </tbody>
+        <thead id="timetable-head"></thead>
+        <tbody id="timetable-body"></tbody>
       </table>
     </div>
+  </div>
+
+  <!-- PAGE 4: 🛠️ 紀錄管理 / 編輯列表 -->
+  <div id="page-manage" class="page">
+    <h3 style="margin-bottom: 10px; font-size: 1rem;">📝 行程紀錄管理</h3>
+    <div id="manage-event-list">載入中...</div>
+
+    <h3 style="margin-top: 20px; margin-bottom: 10px; font-size: 1rem;">💸 記帳紀錄管理</h3>
+    <div id="manage-expense-list">載入中...</div>
   </div>
 
   <!-- 底部 Tab Bar -->
@@ -120,32 +123,36 @@
     <button class="tab-btn active" onclick="switchTab('page-track', this)">⚡ 打卡</button>
     <button class="tab-btn" onclick="switchTab('page-expense', this)">💸 記帳</button>
     <button class="tab-btn" onclick="switchTab('page-timetable', this)">📅 時間表</button>
+    <button class="tab-btn" onclick="switchTab('page-manage', this)">🛠️ 管理</button>
   </div>
 
   <!-- Firebase SDK (Modular v10) -->
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-    import { getFirestore, collection, addDoc, getDocs } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+    import { getFirestore, collection, addDoc, getDocs, doc, deleteDoc, updateDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
-    // ⚠️ 請替換為你自己的 Firebase Project 設定
-    const firebaseConfig = {
-      apiKey: "AIzaSyCa4lyhpiBcTdPAp_6DN0_elzYwZnCzirE",
-      authDomain: "travelremarks-b4f76.firebaseapp.com",
-      projectId: "travelremarks-b4f76",
-      storageBucket: "travelremarks-b4f76.firebasestorage.app",
-      messagingSenderId: "333967646842",
-      appId: "1:333967646842:web:4e5c4d278a211640899bc3"
-    };
+const firebaseConfig = {
+  apiKey: "AIzaSyCa4lyhpiBcTdPAp_6DN0_elzYwZnCzirE",
+  authDomain: "travelremarks-b4f76.firebaseapp.com",
+  projectId: "travelremarks-b4f76",
+  storageBucket: "travelremarks-b4f76.firebasestorage.app",
+  messagingSenderId: "333967646842",
+  appId: "1:333967646842:web:4e5c4d278a211640899bc3"
+};
 
     const app = initializeApp(firebaseConfig);
     const db = getFirestore(app);
 
-    // 預設填入當前日期與時間
     const now = new Date();
-    document.getElementById('eventDate').value = now.toISOString().split('T')[0];
+    const todayStr = now.toISOString().split('T')[0];
+    document.getElementById('eventDate').value = todayStr;
     document.getElementById('eventTime').value = now.toTimeString().substring(0, 5);
+    document.getElementById('ttStartDate').value = todayStr;
 
-    // 1. GPS Helper Function
+    const futureDate = new Date();
+    futureDate.setDate(now.getDate() + 3);
+    document.getElementById('ttEndDate').value = futureDate.toISOString().split('T')[0];
+
     function getGPSLocation() {
       return new Promise((resolve) => {
         if (!navigator.geolocation) return resolve(null);
@@ -157,29 +164,19 @@
       });
     }
 
-    // 2. 逆地理編碼：GPS -> 大約地址 (OpenStreetMap 免費 API)
     async function getReadableAddress(lat, lng) {
       try {
         const url = `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&zoom=16&addressdetails=1&accept-language=ja,zh-TW`;
         const res = await fetch(url);
         const data = await res.json();
-        
         if (data && data.address) {
           const addr = data.address;
-          // 組合日本地址結構：例如 "東京都 新宿区" 或 "大阪府 中央区"
-          const state = addr.province || addr.state || '';
-          const city = addr.city || addr.town || addr.suburb || addr.city_district || '';
-          const road = addr.road || addr.neighbourhood || '';
-          return `${state} ${city} ${road}`.trim() || data.display_name;
+          return `${addr.province || addr.state || ''} ${addr.city || addr.town || addr.suburb || ''} ${addr.road || ''}`.trim();
         }
-        return "未知大約地址";
-      } catch (e) {
-        console.warn("地址讀取失敗:", e);
-        return null;
-      }
+        return "未知地址";
+      } catch (e) { return null; }
     }
 
-    // Tab 切換
     window.switchTab = function(pageId, btn) {
       document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
       document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
@@ -187,17 +184,15 @@
       btn.classList.add('active');
 
       if (pageId === 'page-timetable') renderTimetable();
+      if (pageId === 'page-manage') renderManageList();
     }
 
-    // 快捷輸入按鈕
     window.quickFill = function(prefix) {
-      const timeStr = new Date().toTimeString().substring(0, 5);
-      document.getElementById('eventTime').value = timeStr;
+      document.getElementById('eventTime').value = new Date().toTimeString().substring(0, 5);
       document.getElementById('eventDetail').value = `${prefix}: `;
       document.getElementById('eventDetail').focus();
     }
 
-    // 儲存打卡 (含 GPS + 大約地址)
     window.saveEvent = async function() {
       const detail = document.getElementById('eventDetail').value;
       const time = document.getElementById('eventTime').value;
@@ -206,35 +201,22 @@
 
       if (!detail) return alert('請輸入行程內容');
 
-      btn.innerText = "⏳ 定位與解析地址中...";
+      btn.innerText = "⏳ 定位中...";
       btn.disabled = true;
 
       const location = await getGPSLocation();
-      let address = null;
-      if (location) {
-        address = await getReadableAddress(location.lat, location.lng);
-      }
+      let address = location ? await getReadableAddress(location.lat, location.lng) : null;
 
       try {
         await addDoc(collection(db, "log_events"), {
-          detail,
-          eventTime: time,
-          eventDate: date,
-          updatedTimestamp: new Date().toISOString(),
-          location: location,
-          address: address // 寫入大約地址文字
+          detail, eventTime: time, eventDate: date, updatedTimestamp: new Date().toISOString(), location, address
         });
-        alert('打卡成功！' + (address ? `\n📍 位置: ${address}` : ''));
+        alert('打卡成功！');
         document.getElementById('eventDetail').value = '';
-      } catch (e) {
-        alert('儲存失敗: ' + e.message);
-      } finally {
-        btn.innerText = "📍 標記並記錄 GPS 與地址";
-        btn.disabled = false;
-      }
+      } catch (e) { alert('儲存失敗: ' + e.message); }
+      finally { btn.innerText = "📍 標記並記錄 GPS 與地址"; btn.disabled = false; }
     }
 
-    // 儲存開支
     window.saveExpense = async function() {
       const amount = document.getElementById('expAmount').value;
       const method = document.getElementById('expMethod').value;
@@ -247,63 +229,69 @@
       btn.disabled = true;
 
       const location = await getGPSLocation();
-      let address = null;
-      if (location) {
-        address = await getReadableAddress(location.lat, location.lng);
-      }
+      let address = location ? await getReadableAddress(location.lat, location.lng) : null;
 
       try {
         await addDoc(collection(db, "expenses"), {
-          amount: Number(amount),
-          paymentMethod: method,
-          shopName: shop || '',
-          timestamp: new Date().toISOString(),
-          location: location,
-          address: address
+          amount: Number(amount), paymentMethod: method, shopName: shop || '', timestamp: new Date().toISOString(), location, address
         });
         alert('記帳成功！');
         document.getElementById('expAmount').value = '';
         document.getElementById('expShop').value = '';
-      } catch (e) {
-        alert('儲存失敗: ' + e.message);
-      } finally {
-        btn.innerText = "💵 記錄開支與地址";
-        btn.disabled = false;
-      }
+      } catch (e) { alert('儲存失敗: ' + e.message); }
+      finally { btn.innerText = "💵 記錄開支與地址"; btn.disabled = false; }
     }
 
-    // 渲染 Timetable
-    async function renderTimetable() {
+    // 1. 動態生成 Date Range 時間表
+    window.renderTimetable = async function() {
+      const startStr = document.getElementById('ttStartDate').value;
+      const endStr = document.getElementById('ttEndDate').value;
+      const thead = document.getElementById('timetable-head');
       const tbody = document.getElementById('timetable-body');
-      tbody.innerHTML = '<tr><td colspan="4">資料載入中...</td></tr>';
 
+      if (!startStr || !endStr) return alert('請選擇日期區間');
+
+      tbody.innerHTML = '<tr><td colspan="10">載入中...</td></tr>';
+
+      // 產生日期陣列
+      const dates = [];
+      let curr = new Date(startStr);
+      const end = new Date(endStr);
+      while (curr <= end) {
+        dates.push(curr.toISOString().split('T')[0]);
+        curr.setDate(curr.getDate() + 1);
+      }
+
+      // 生成 <thead>
+      let headHtml = '<tr><th style="width: 50px;">Time</th>';
+      dates.forEach(d => {
+        const dateObj = new Date(d);
+        const displayDate = `${dateObj.getMonth()+1}/${dateObj.getDate()}`;
+        headHtml += `<th>${displayDate}</th>`;
+      });
+      headHtml += '</tr>';
+      thead.innerHTML = headHtml;
+
+      // 撈取 DB
       try {
         const querySnapshot = await getDocs(collection(db, "log_events"));
         const events = [];
         querySnapshot.forEach(doc => events.push(doc.data()));
 
-        let html = '';
+        let bodyHtml = '';
         for (let hour = 7; hour <= 23; hour++) {
           const hourStr = String(hour).padStart(2, '0');
-          const timeLabel = `${hourStr}:00`;
+          bodyHtml += `<tr><td><strong>${hourStr}:00</strong></td>`;
 
-          const d1 = events.filter(e => e.eventDate.endsWith('09-20') && e.eventTime.startsWith(hourStr));
-          const d2 = events.filter(e => e.eventDate.endsWith('09-21') && e.eventTime.startsWith(hourStr));
-          const d3 = events.filter(e => e.eventDate.endsWith('09-22') && e.eventTime.startsWith(hourStr));
+          dates.forEach(d => {
+            const matchedEvents = events.filter(e => e.eventDate === d && e.eventTime.startsWith(hourStr));
+            bodyHtml += `<td>${renderCell(matchedEvents)}</td>`;
+          });
 
-          html += `
-            <tr>
-              <td><strong>${timeLabel}</strong></td>
-              <td>${renderCell(d1)}</td>
-              <td>${renderCell(d2)}</td>
-              <td>${renderCell(d3)}</td>
-            </tr>
-          `;
+          bodyHtml += '</tr>';
         }
-        tbody.innerHTML = html;
-      } catch (e) {
-        tbody.innerHTML = `<tr><td colspan="4">載入失敗: ${e.message}</td></tr>`;
-      }
+        tbody.innerHTML = bodyHtml;
+      } catch (e) { tbody.innerHTML = `<tr><td colspan="10">載入失敗: ${e.message}</td></tr>`; }
     }
 
     function renderCell(eventList) {
@@ -312,9 +300,76 @@
         <div class="cell-event">
           <strong>${e.eventTime}</strong> ${e.detail}
           ${e.address ? `<div class="cell-address">📍 ${e.address}</div>` : ''}
-          ${e.location ? `<a class="cell-gps" href="https://www.google.com/maps?q=${e.location.lat},${e.location.lng}" target="_blank">開啟 Google Maps ➔</a>` : ''}
+          ${e.location ? `<a class="cell-gps" href="https://www.google.com/maps?q=${e.location.lat},${e.location.lng}" target="_blank">Google Maps ➔</a>` : ''}
         </div>
       `).join('');
+    }
+
+    // 2. 紀錄管理與編輯列表 (Tab 4)
+    async function renderManageList() {
+      const eventContainer = document.getElementById('manage-event-list');
+      const expenseContainer = document.getElementById('manage-expense-list');
+
+      eventContainer.innerHTML = '載入中...';
+      expenseContainer.innerHTML = '載入中...';
+
+      // 載入行程
+      const eventSnap = await getDocs(collection(db, "log_events"));
+      let eventHtml = '';
+      eventSnap.forEach(docSnap => {
+        const d = docSnap.data();
+        eventHtml += `
+          <div class="entry-card">
+            <div class="entry-info">
+              <strong>${d.detail}</strong>
+              <div class="entry-date">📅 ${d.eventDate} ${d.eventTime}</div>
+            </div>
+            <div>
+              <button class="btn-edit" onclick="editEvent('${docSnap.id}', '${d.detail}')">修改</button>
+              <button class="btn-danger" onclick="deleteEntry('log_events', '${docSnap.id}')">刪除</button>
+            </div>
+          </div>
+        `;
+      });
+      eventContainer.innerHTML = eventHtml || '<div style="color: #64748b; font-size: 0.85rem;">暫無打卡紀錄</div>';
+
+      // 載入開支
+      const expSnap = await getDocs(collection(db, "expenses"));
+      let expHtml = '';
+      expSnap.forEach(docSnap => {
+        const d = docSnap.data();
+        expHtml += `
+          <div class="entry-card">
+            <div class="entry-info">
+              <strong>¥${d.amount} (${d.paymentMethod})</strong> - ${d.shopName || '未填寫店名'}
+              <div class="entry-date">🕒 ${d.timestamp.substring(0, 10)}</div>
+            </div>
+            <div>
+              <button class="btn-danger" onclick="deleteEntry('expenses', '${docSnap.id}')">刪除</button>
+            </div>
+          </div>
+        `;
+      });
+      expenseContainer.innerHTML = expHtml || '<div style="color: #64748b; font-size: 0.85rem;">暫無開支紀錄</div>';
+    }
+
+    // 編輯行程 Function
+    window.editEvent = async function(id, oldDetail) {
+      const newDetail = prompt('請輸入新的行程描述：', oldDetail);
+      if (newDetail && newDetail !== oldDetail) {
+        await updateDoc(doc(db, "log_events", id), { detail: newDetail });
+        alert('修改成功！');
+        renderManageList();
+      }
+    }
+
+    // 刪除 Entry Function
+    window.deleteEntry = async function(colName, id) {
+      if (confirm('確定要刪除這筆紀錄嗎？')) {
+        await deleteDoc(doc(db, colName, id));
+        alert('已刪除！');
+        renderManageList();
+      }
     }
   </script>
 </body>

@@ -8,15 +8,15 @@
     * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
     body { background: #f8fafc; color: #0f172a; padding-bottom: 75px; }
     
-    header { background: #2563eb; color: white; padding: 12px; text-align: center; position: sticky; top: 0; z-index: 90; }
-    header h1 { font-size: 1.1rem; }
+    header { background: #2563eb; color: white; padding: 10px 14px; position: sticky; top: 0; z-index: 90; display: flex; justify-content: space-between; align-items: center; }
+    header h1 { font-size: 1rem; }
+    header select { background: #1d4ed8; color: white; border: 1px solid #60a5fa; padding: 4px 8px; border-radius: 6px; font-weight: bold; font-size: 0.85rem; }
 
-    /* 動態 Notification Banner (替代 Alert Popup) */
     #notification-bar {
       display: none; position: fixed; top: 45px; left: 50%; transform: translateX(-50%);
       width: 90%; max-width: 400px; padding: 10px 16px; border-radius: 8px;
       font-size: 0.85rem; font-weight: bold; text-align: center; color: white;
-      box-shadow: 0 4px 12px rgba(0,0,0,0.15); z-index: 2000; transition: all 0.3s ease;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.15); z-index: 2000;
     }
     .notif-success { background: #10b981; }
     .notif-error { background: #ef4444; }
@@ -46,14 +46,17 @@
     table.tt-table th { background: #f1f5f9; color: #334155; white-space: nowrap; }
     
     .cell-event { background: #eff6ff; color: #1e40af; border: 1px solid #bfdbfe; border-radius: 4px; padding: 6px; font-size: 0.75rem; text-align: left; margin-bottom: 4px; }
-    .cell-address { font-size: 0.65rem; color: #475569; margin-top: 3px; border-top: 1px dashed #cbd5e1; padding-top: 2px; }
-    .cell-gps { font-size: 0.65rem; color: #0284c7; text-decoration: none; display: inline-block; margin-top: 2px; font-weight: bold; }
 
     .entry-card { background: #fff; padding: 12px; border-radius: 8px; margin-bottom: 8px; border: 1px solid #e2e8f0; display: flex; justify-content: space-between; align-items: center; }
     .entry-info { font-size: 0.85rem; }
     .entry-date { font-size: 0.75rem; color: #64748b; }
     .btn-danger { background: #ef4444; color: white; border: none; padding: 6px 10px; border-radius: 4px; font-size: 0.75rem; cursor: pointer; }
     .btn-edit { background: #f59e0b; color: white; border: none; padding: 6px 10px; border-radius: 4px; font-size: 0.75rem; cursor: pointer; margin-right: 4px; }
+
+    /* 統計小卡片組件 */
+    .stat-section { background: #fff; padding: 12px; border-radius: 8px; margin-bottom: 12px; border: 1px solid #e2e8f0; }
+    .stat-title { font-weight: bold; font-size: 0.9rem; color: #1e293b; margin-bottom: 8px; border-bottom: 2px solid #3b82f6; display: inline-block; padding-bottom: 2px; }
+    .stat-row { display: flex; justify-content: space-between; font-size: 0.85rem; padding: 4px 0; border-bottom: 1px dashed #f1f5f9; }
 
     .summary-card { background: #0f172a; color: white; padding: 16px; border-radius: 12px; margin-top: 12px; }
     .summary-title { font-size: 0.85rem; color: #94a3b8; margin-bottom: 8px; }
@@ -71,10 +74,11 @@
 <body>
 
   <header>
-    <h1>🇯🇵 日本行程助手 & 記帳</h1>
+    <h1>🇯🇵 日本助手</h1>
+    <!-- Trip Master Selector -->
+    <select id="currentTripSelect" onchange="onTripChange()"></select>
   </header>
 
-  <!-- 頂部靜態 / 動態 Notification 提示列 -->
   <div id="notification-bar"></div>
 
   <!-- PAGE 1: ⚡ 快速打卡 -->
@@ -161,8 +165,18 @@
     </div>
   </div>
 
-  <!-- PAGE 4: 🛠️ 管理區 -->
+  <!-- PAGE 4: 🛠️ 管理區 (新增行程 Master Data 管理) -->
   <div id="page-manage" class="page">
+    <div class="form-group" style="background: #eff6ff; border: 1px solid #bfdbfe;">
+      <label style="color: #1e40af;">➕ 新增旅行行程 (Master Data)</label>
+      <input type="text" id="newTripName" placeholder="例如：2026 東京秋季遊">
+      <div class="input-row">
+        <div><label>開始日期</label><input type="date" id="newTripStart"></div>
+        <div><label>結束日期</label><input type="date" id="newTripEnd"></div>
+      </div>
+      <button class="btn-submit" style="padding: 8px; font-size: 0.9rem;" onclick="createTrip()">建立 Trip</button>
+    </div>
+
     <h3 style="margin-bottom: 10px; font-size: 1rem;">📝 行程紀錄管理</h3>
     <div id="manage-event-list">載入中...</div>
 
@@ -170,12 +184,14 @@
     <div id="manage-expense-list">載入中...</div>
   </div>
 
-  <!-- PAGE 5: 📊 統計開支 (匯率換算 + 一鍵 CSV) -->
+  <!-- PAGE 5: 📊 統計開支 (Date Range + By Date + By Type) -->
   <div id="page-analytics" class="page">
     <div class="filter-box">
-      <input type="date" id="analyticsDate" onchange="renderAnalytics()">
-      <button style="padding: 6px 8px; background: #64748b; color: white; border: none; border-radius: 4px; white-space: nowrap;" onclick="clearAnalyticsDate()">全部</button>
-      <button style="padding: 6px 10px; background: #059669; color: white; border: none; border-radius: 4px; white-space: nowrap; font-weight: bold;" onclick="exportExpensesCSV()">📥 匯出 CSV</button>
+      <input type="date" id="anaStartDate">
+      <span>至</span>
+      <input type="date" id="anaEndDate">
+      <button style="padding: 6px 10px; background: #2563eb; color: white; border: none; border-radius: 4px; font-weight: bold;" onclick="renderAnalytics()">篩選</button>
+      <button style="padding: 6px 8px; background: #059669; color: white; border: none; border-radius: 4px; font-weight: bold; white-space: nowrap;" onclick="exportExpensesCSV()">📥 CSV</button>
     </div>
 
     <div class="filter-box" style="margin-bottom: 12px;">
@@ -183,22 +199,24 @@
       <input type="number" id="jpyRate" value="0.052" step="0.001" oninput="renderAnalytics()">
     </div>
 
-    <div id="analytics-list">載入中...</div>
+    <!-- 按付款方式 Summary -->
+    <div class="stat-section">
+      <div class="stat-title">💳 按付款方式 (By Payment Method)</div>
+      <div id="stat-by-type">載入中...</div>
+    </div>
 
+    <!-- 按日期 Summary -->
+    <div class="stat-section">
+      <div class="stat-title">📅 按日期花費 (By Date)</div>
+      <div id="stat-by-date">載入中...</div>
+    </div>
+
+    <!-- 總 Sum Up 卡片 -->
     <div class="summary-card">
-      <div class="summary-title" id="summary-title-text">總開支統計</div>
-      <div class="summary-row">
-        <span>日圓總計 (JPY):</span>
-        <span style="color: #38bdf8;" id="sum-jpy">¥0</span>
-      </div>
-      <div class="summary-row">
-        <span>港幣直刷 (HKD):</span>
-        <span style="color: #4ade80;" id="sum-hkd">$0</span>
-      </div>
-      <div class="summary-row summary-grand">
-        <span>折合總額 (HKD):</span>
-        <span id="sum-total-hkd">$0</span>
-      </div>
+      <div class="summary-title" id="summary-title-text">選定區間總開支</div>
+      <div class="summary-row"><span>日圓總計 (JPY):</span><span style="color: #38bdf8;" id="sum-jpy">¥0</span></div>
+      <div class="summary-row"><span>港幣直刷 (HKD):</span><span style="color: #4ade80;" id="sum-hkd">$0</span></div>
+      <div class="summary-row summary-grand"><span>折合總花費 (HKD):</span><span id="sum-total-hkd">$0</span></div>
     </div>
   </div>
 
@@ -227,6 +245,9 @@
     const app = initializeApp(firebaseConfig);
     const db = getFirestore(app);
 
+    let tripsList = [];
+    let currentTripId = '';
+
     const now = new Date();
     const todayStr = now.toISOString().split('T')[0];
     const timeStr = now.toTimeString().substring(0, 5);
@@ -235,13 +256,7 @@
     document.getElementById('eventTime').value = timeStr;
     document.getElementById('expDate').value = todayStr;
     document.getElementById('expTime').value = timeStr;
-    document.getElementById('ttStartDate').value = todayStr;
 
-    const futureDate = new Date();
-    futureDate.setDate(now.getDate() + 3);
-    document.getElementById('ttEndDate').value = futureDate.toISOString().split('T')[0];
-
-    // 1. 動態 Banner 替代 Alert
     function showNotification(msg, type = 'success') {
       const bar = document.getElementById('notification-bar');
       bar.className = `notif-${type}`;
@@ -250,13 +265,65 @@
       setTimeout(() => { bar.style.display = 'none'; }, 3000);
     }
 
-    // 2. Offline 狀態檢測
-    function checkOnlineStatus() {
-      if (!navigator.onLine) {
-        showNotification("⚠️ 目前網絡斷線，資料將待連線後同步", "info");
-        return false;
+    // 初始化加載 Trips Master Data
+    async function initTrips() {
+      const tripSnap = await getDocs(collection(db, "trips"));
+      tripsList = [];
+      tripSnap.forEach(d => tripsList.push({ id: d.id, ...d.data() }));
+
+      const select = document.getElementById('currentTripSelect');
+      select.innerHTML = '';
+
+      if (tripsList.length === 0) {
+        // 若無 Trip，預設建立一個
+        const docRef = await addDoc(collection(db, "trips"), {
+          name: "🇯🇵 日本旅行", startDate: todayStr, endDate: todayStr
+        });
+        currentTripId = docRef.id;
+        tripsList.push({ id: docRef.id, name: "🇯🇵 日本旅行", startDate: todayStr, endDate: todayStr });
+      } else {
+        currentTripId = tripsList[0].id;
       }
-      return true;
+
+      tripsList.forEach(t => {
+        select.innerHTML += `<option value="${t.id}">${t.name}</option>`;
+      });
+
+      applyTripDates();
+    }
+    initTrips();
+
+    window.onTripChange = function() {
+      currentTripId = document.getElementById('currentTripSelect').value;
+      applyTripDates();
+      const activePage = document.querySelector('.page.active').id;
+      if (activePage === 'page-timetable') renderTimetable();
+      if (activePage === 'page-manage') renderManageList();
+      if (activePage === 'page-analytics') renderAnalytics();
+    }
+
+    function applyTripDates() {
+      const activeTrip = tripsList.find(t => t.id === currentTripId);
+      if (activeTrip) {
+        document.getElementById('ttStartDate').value = activeTrip.startDate || todayStr;
+        document.getElementById('ttEndDate').value = activeTrip.endDate || todayStr;
+        document.getElementById('anaStartDate').value = activeTrip.startDate || todayStr;
+        document.getElementById('anaEndDate').value = activeTrip.endDate || todayStr;
+      }
+    }
+
+    // 建立 Master Trip
+    window.createTrip = async function() {
+      const name = document.getElementById('newTripName').value;
+      const startDate = document.getElementById('newTripStart').value;
+      const endDate = document.getElementById('newTripEnd').value;
+
+      if (!name || !startDate || !endDate) return showNotification('請填寫完整 Trip 資料', 'error');
+
+      await addDoc(collection(db, "trips"), { name, startDate, endDate });
+      showNotification('✅ Trip 建立成功！');
+      document.getElementById('newTripName').value = '';
+      initTrips();
     }
 
     function getGPSLocation() {
@@ -271,7 +338,6 @@
     }
 
     async function getReadableAddress(lat, lng) {
-      if (!navigator.onLine) return "斷線無法取得地址";
       try {
         const url = `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&zoom=16&addressdetails=1&accept-language=ja,zh-TW`;
         const res = await fetch(url);
@@ -309,7 +375,6 @@
 
       if (!detail) return showNotification('請輸入行程內容', 'error');
 
-      checkOnlineStatus();
       btn.innerText = "⏳ 定位中...";
       btn.disabled = true;
 
@@ -318,7 +383,7 @@
 
       try {
         await addDoc(collection(db, "log_events"), {
-          detail, eventTime: time, eventDate: date, updatedTimestamp: new Date().toISOString(), location, address
+          tripId: currentTripId, detail, eventTime: time, eventDate: date, location, address
         });
         showNotification('✅ 打卡成功！');
         document.getElementById('eventDetail').value = '';
@@ -337,7 +402,6 @@
 
       if (!amount) return showNotification('請輸入金額', 'error');
 
-      checkOnlineStatus();
       btn.innerText = "⏳ 定位中...";
       btn.disabled = true;
 
@@ -346,8 +410,8 @@
 
       try {
         await addDoc(collection(db, "expenses"), {
-          amount: Number(amount), currency, expDate: date, expTime: time,
-          paymentMethod: method, shopName: shop || '', timestamp: new Date().toISOString(), location, address
+          tripId: currentTripId, amount: Number(amount), currency, expDate: date, expTime: time,
+          paymentMethod: method, shopName: shop || '', location, address
         });
         showNotification('✅ 記帳成功！');
         document.getElementById('expAmount').value = '';
@@ -385,7 +449,10 @@
       try {
         const querySnapshot = await getDocs(collection(db, "log_events"));
         const events = [];
-        querySnapshot.forEach(doc => events.push(doc.data()));
+        querySnapshot.forEach(doc => {
+          const d = doc.data();
+          if (!d.tripId || d.tripId === currentTripId) events.push(d);
+        });
 
         let bodyHtml = '';
         for (let hour = 7; hour <= 23; hour++) {
@@ -422,18 +489,19 @@
       let eventHtml = '';
       eventSnap.forEach(docSnap => {
         const d = docSnap.data();
-        eventHtml += `
-          <div class="entry-card">
-            <div class="entry-info">
-              <strong>${d.detail}</strong>
-              <div class="entry-date">📅 ${d.eventDate} ${d.eventTime || ''}</div>
+        if (!d.tripId || d.tripId === currentTripId) {
+          eventHtml += `
+            <div class="entry-card">
+              <div class="entry-info">
+                <strong>${d.detail}</strong>
+                <div class="entry-date">📅 ${d.eventDate} ${d.eventTime || ''}</div>
+              </div>
+              <div>
+                <button class="btn-danger" onclick="deleteEntry('log_events', '${docSnap.id}')">刪除</button>
+              </div>
             </div>
-            <div>
-              <button class="btn-edit" onclick="editEventPrompt('${docSnap.id}', '${d.detail}', '${d.eventDate}', '${d.eventTime || ''}')">修改</button>
-              <button class="btn-danger" onclick="deleteEntry('log_events', '${docSnap.id}')">刪除</button>
-            </div>
-          </div>
-        `;
+          `;
+        }
       });
       eventContainer.innerHTML = eventHtml || '<div style="color: #64748b; font-size: 0.85rem;">暫無打卡紀錄</div>';
 
@@ -441,37 +509,22 @@
       let expHtml = '';
       expSnap.forEach(docSnap => {
         const d = docSnap.data();
-        const cur = d.currency || 'JPY';
-        expHtml += `
-          <div class="entry-card">
-            <div class="entry-info">
-              <strong>${cur === 'JPY' ? '¥' : '$'}${d.amount} (${d.paymentMethod})</strong> - ${d.shopName || '無備註'}
-              <div class="entry-date">🕒 ${d.expDate || ''} ${d.expTime || ''}</div>
+        if (!d.tripId || d.tripId === currentTripId) {
+          const cur = d.currency || 'JPY';
+          expHtml += `
+            <div class="entry-card">
+              <div class="entry-info">
+                <strong>${cur === 'JPY' ? '¥' : '$'}${d.amount} (${d.paymentMethod})</strong> - ${d.shopName || '無備註'}
+                <div class="entry-date">🕒 ${d.expDate || ''} ${d.expTime || ''}</div>
+              </div>
+              <div>
+                <button class="btn-danger" onclick="deleteEntry('expenses', '${docSnap.id}')">刪除</button>
+              </div>
             </div>
-            <div>
-              <button class="btn-edit" onclick="editExpensePrompt('${docSnap.id}', ${d.amount}, '${cur}', '${d.shopName || ''}')">修改</button>
-              <button class="btn-danger" onclick="deleteEntry('expenses', '${docSnap.id}')">刪除</button>
-            </div>
-          </div>
-        `;
+          `;
+        }
       });
       expenseContainer.innerHTML = expHtml || '<div style="color: #64748b; font-size: 0.85rem;">暫無開支紀錄</div>';
-    }
-
-    window.editEventPrompt = async function(id, oldDetail, oldDate, oldTime) {
-      const newDetail = prompt('修改描述：', oldDetail);
-      if (newDetail === null) return;
-      await updateDoc(doc(db, "log_events", id), { detail: newDetail });
-      showNotification('打卡紀錄已更新');
-      renderManageList();
-    }
-
-    window.editExpensePrompt = async function(id, oldAmt, oldCur, oldShop) {
-      const newAmt = prompt('修改金額：', oldAmt);
-      if (newAmt === null) return;
-      await updateDoc(doc(db, "expenses", id), { amount: Number(newAmt) });
-      showNotification('記帳紀錄已更新');
-      renderManageList();
     }
 
     window.deleteEntry = async function(colName, id) {
@@ -482,89 +535,112 @@
       }
     }
 
-    // 3. 匯率換算與統計渲染
+    // 渲染進階統計：Date Range + By Date + By Payment Type
     window.renderAnalytics = async function() {
-      const filterDate = document.getElementById('analyticsDate').value;
+      const startStr = document.getElementById('anaStartDate').value;
+      const endStr = document.getElementById('anaEndDate').value;
       const rate = Number(document.getElementById('jpyRate').value) || 0.052;
-      const container = document.getElementById('analytics-list');
-      container.innerHTML = '計算中...';
+
+      const typeContainer = document.getElementById('stat-by-type');
+      const dateContainer = document.getElementById('stat-by-date');
+      typeContainer.innerHTML = '計算中...';
+      dateContainer.innerHTML = '計算中...';
 
       try {
         const expSnap = await getDocs(collection(db, "expenses"));
-        let jpySum = 0;
-        let hkdSum = 0;
-        let html = '';
+        
+        let jpyGrand = 0;
+        let hkdGrand = 0;
+
+        const byType = { CREDIT: 0, IC: 0, CASH: 0 };
+        const byDate = {};
 
         expSnap.forEach(docSnap => {
           const d = docSnap.data();
-          const dDate = d.expDate || d.timestamp?.substring(0, 10);
-          const cur = d.currency || 'JPY';
+          if (d.tripId && d.tripId !== currentTripId) return;
 
-          if (!filterDate || filterDate === dDate) {
-            if (cur === 'JPY') jpySum += Number(d.amount || 0);
-            if (cur === 'HKD') hkdSum += Number(d.amount || 0);
+          const expD = d.expDate || d.timestamp?.substring(0, 10);
+          
+          if (!startStr || !endStr || (expD >= startStr && expD <= endStr)) {
+            const cur = d.currency || 'JPY';
+            const amt = Number(d.amount || 0);
 
-            html += `
-              <div class="entry-card">
-                <div class="entry-info">
-                  <strong>${cur === 'JPY' ? '¥' : '$'}${d.amount}</strong> (${d.paymentMethod}) - ${d.shopName || '無備註'}
-                  <div class="entry-date">🕒 ${dDate} ${d.expTime || ''} ${d.address ? '| 📍' + d.address : ''}</div>
-                </div>
-              </div>
-            `;
+            if (cur === 'JPY') jpyGrand += amt;
+            if (cur === 'HKD') hkdGrand += amt;
+
+            // By Type
+            const m = d.paymentMethod || 'CASH';
+            byType[m] = (byType[m] || 0) + (cur === 'JPY' ? amt * rate : amt);
+
+            // By Date
+            if (!byDate[expD]) byDate[expD] = { jpy: 0, hkd: 0 };
+            if (cur === 'JPY') byDate[expD].jpy += amt;
+            if (cur === 'HKD') byDate[expD].hkd += amt;
           }
         });
 
-        const grandTotalHKD = hkdSum + (jpySum * rate);
+        // 渲染 By Type
+        typeContainer.innerHTML = `
+          <div class="stat-row"><span>💳 Credit Card:</span><strong>$${Math.round(byType.CREDIT).toLocaleString()} HKD</strong></div>
+          <div class="stat-row"><span>🐧 IC 卡 (Suica):</span><strong>$${Math.round(byType.IC).toLocaleString()} HKD</strong></div>
+          <div class="stat-row"><span>💵 Cash 現金:</span><strong>$${Math.round(byType.CASH).toLocaleString()} HKD</strong></div>
+        `;
 
-        container.innerHTML = html || '<div style="color: #64748b; font-size: 0.85rem;">該日期無開支紀錄</div>';
-        document.getElementById('sum-jpy').innerText = `¥${jpySum.toLocaleString()}`;
-        document.getElementById('sum-hkd').innerText = `$${hkdSum.toLocaleString()}`;
-        document.getElementById('sum-total-hkd').innerText = `$${Math.round(grandTotalHKD).toLocaleString()} HKD`;
+        // 渲染 By Date
+        let dateHtml = '';
+        Object.keys(byDate).sort().forEach(dateKey => {
+          const item = byDate[dateKey];
+          const totalEst = item.hkd + (item.jpy * rate);
+          dateHtml += `
+            <div class="stat-row">
+              <span>📅 ${dateKey}</span>
+              <span>¥${item.jpy.toLocaleString()} / $${item.hkd} (折合 <strong>$${Math.round(totalEst)}</strong>)</span>
+            </div>
+          `;
+        });
+        dateContainer.innerHTML = dateHtml || '<div style="color: #64748b; font-size: 0.8rem;">區間內無開支</div>';
 
-      } catch (e) { container.innerHTML = `載入失敗: ${e.message}`; }
+        // Grand Total
+        const totalGrandHKD = hkdGrand + (jpyGrand * rate);
+        document.getElementById('sum-jpy').innerText = `¥${jpyGrand.toLocaleString()}`;
+        document.getElementById('sum-hkd').innerText = `$${hkdGrand.toLocaleString()}`;
+        document.getElementById('sum-total-hkd').innerText = `$${Math.round(totalGrandHKD).toLocaleString()} HKD`;
+
+      } catch (e) { dateContainer.innerHTML = `載入失敗: ${e.message}`; }
     }
 
-    window.clearAnalyticsDate = function() {
-      document.getElementById('analyticsDate').value = '';
-      renderAnalytics();
-    }
-
-    // 4. 一鍵匯出 CSV
+    // 匯出 CSV (以當前 Trip 篩選)
     window.exportExpensesCSV = async function() {
       try {
         const expSnap = await getDocs(collection(db, "expenses"));
-        let csvContent = "\uFEFF"; // 加入 UTF-8 BOM 防亂碼
-        csvContent += "日期,時間,金額,貨幣,付款方式,店名/備註,地址,Latitude,Longitude\n";
+        let csvContent = "\uFEFF日期,時間,金額,貨幣,付款方式,店名/備註,地址\n";
 
         expSnap.forEach(docSnap => {
           const d = docSnap.data();
-          const row = [
-            `"${d.expDate || ''}"`,
-            `"${d.expTime || ''}"`,
-            d.amount || 0,
-            `"${d.currency || 'JPY'}"`,
-            `"${d.paymentMethod || ''}"`,
-            `"${(d.shopName || '').replace(/"/g, '""')}"`,
-            `"${(d.address || '').replace(/"/g, '""')}"`,
-            d.location?.lat || '',
-            d.location?.lng || ''
-          ];
-          csvContent += row.join(",") + "\n";
+          if (!d.tripId || d.tripId === currentTripId) {
+            const row = [
+              `"${d.expDate || ''}"`,
+              `"${d.expTime || ''}"`,
+              d.amount || 0,
+              `"${d.currency || 'JPY'}"`,
+              `"${d.paymentMethod || ''}"`,
+              `"${(d.shopName || '').replace(/"/g, '""')}"`,
+              `"${(d.address || '').replace(/"/g, '""')}"`
+            ];
+            csvContent += row.join(",") + "\n";
+          }
         });
 
         const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
         const url = URL.createObjectURL(blob);
         const link = document.createElement("a");
         link.setAttribute("href", url);
-        link.setAttribute("download", `Japan_Expenses_${todayStr}.csv`);
+        link.setAttribute("download", `Trip_Expenses_${todayStr}.csv`);
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
         showNotification("📥 CSV 匯出成功！");
-      } catch (e) {
-        showNotification("匯出失敗: " + e.message, "error");
-      }
+      } catch (e) { showNotification("匯出失敗: " + e.message, "error"); }
     }
   </script>
 </body>

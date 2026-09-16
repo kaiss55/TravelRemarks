@@ -25,9 +25,9 @@
     .page { display: none; padding: 14px; }
     .page.active { display: block; }
 
-    /* 通用打卡按鈕網格 (2排 x 3個) */
-    .quick-btns { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 16px; }
-    .q-btn { background: #e0e7ff; color: #3730a3; border: 1px solid #c7d2fe; padding: 10px 4px; border-radius: 8px; font-weight: bold; font-size: 0.8rem; cursor: pointer; text-align: center; }
+    /* 快捷打卡按鈕 (改為 2 個平行大按鈕) */
+    .quick-btns { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 16px; }
+    .q-btn { background: #e0e7ff; color: #3730a3; border: 1px solid #c7d2fe; padding: 12px 6px; border-radius: 8px; font-weight: bold; font-size: 0.9rem; cursor: pointer; text-align: center; }
 
     .form-group { background: #fff; padding: 16px; border-radius: 12px; box-shadow: 0 1px 4px rgba(0,0,0,0.06); margin-bottom: 12px; }
     .form-group label { font-size: 0.8rem; color: #64748b; font-weight: bold; display: block; margin-bottom: 4px; }
@@ -81,20 +81,16 @@
 
   <div id="notification-bar"></div>
 
-  <!-- PAGE 1: ⚡ 快速打卡 (優化為高頻 General 按鈕) -->
+  <!-- PAGE 1: ⚡ 快速打卡 (只保留「到達」與「離開」) -->
   <div id="page-track" class="page active">
     <div class="quick-btns">
       <button class="q-btn" onclick="quickFill('到達')">📍 到達</button>
-      <button class="q-btn" onclick="quickFill('出發')">🚶 出發</button>
-      <button class="q-btn" onclick="quickFill('餐飲')">🍽️ 餐飲</button>
-      <button class="q-btn" onclick="quickFill('購物')">🛍️ 購物</button>
-      <button class="q-btn" onclick="quickFill('景點')">🎟️ 景點</button>
-      <button class="q-btn" onclick="quickFill('休息')">☕ 休息</button>
+      <button class="q-btn" onclick="quickFill('離開')">🚶 離開</button>
     </div>
 
     <div class="form-group">
       <label>行程 / 地點描述</label>
-      <input type="text" id="eventDetail" placeholder="例如：到達 SHIBUYA SKY / 購物 Uniqlo">
+      <input type="text" id="eventDetail" placeholder="例如：到達 SHIBUYA SKY / 離開 一蘭拉麵">
       <div class="input-row">
         <div><label>日期</label><input type="date" id="eventDate"></div>
         <div><label>時間</label><input type="time" id="eventTime"></div>
@@ -156,9 +152,8 @@
     </div>
   </div>
 
-  <!-- PAGE 4: 🛠️ 管理區 (新增 Trip Master 管理 + 回歸 Edit 功能) -->
+  <!-- PAGE 4: 🛠️ 管理區 -->
   <div id="page-manage" class="page">
-    <!-- Trip Master 維護區 -->
     <div class="form-group" style="background: #eff6ff; border: 1px solid #bfdbfe;">
       <label style="color: #1e40af; font-size: 0.9rem;">✈️ 旅行行程管理 (Trip Master)</label>
       <input type="text" id="newTripName" placeholder="Trip 名稱 (例如: 2026 東京秋季遊)">
@@ -257,7 +252,6 @@
       setTimeout(() => { bar.style.display = 'none'; }, 3000);
     }
 
-    // 初始化與渲染 Trips
     async function initTrips() {
       const tripSnap = await getDocs(collection(db, "trips"));
       tripsList = [];
@@ -336,7 +330,7 @@
       initTrips();
     }
 
-    window.editTripPrompt = async function(id, oldName, oldStart, oldEnd) {
+    window.editTripPrompt = async function(id, oldName) {
       const newName = prompt('修改 Trip 名稱：', oldName);
       if (newName === null) return;
       await updateDoc(doc(db, "trips", id), { name: newName });
@@ -496,7 +490,6 @@
       `).join('');
     }
 
-    // 渲染管理區 + 補回 Edit 按鈕功能
     async function renderManageList() {
       const eventContainer = document.getElementById('manage-event-list');
       const expenseContainer = document.getElementById('manage-expense-list');
@@ -548,7 +541,6 @@
       expenseContainer.innerHTML = expHtml || '<div style="color: #64748b; font-size: 0.85rem;">暫無開支紀錄</div>';
     }
 
-    // 編輯打卡 Prompt
     window.editEventPrompt = async function(id, oldDetail) {
       const newDetail = prompt('修改打卡描述：', oldDetail);
       if (newDetail === null) return;
@@ -557,7 +549,6 @@
       renderManageList();
     }
 
-    // 編輯記帳 Prompt
     window.editExpensePrompt = async function(id, oldAmt, oldShop) {
       const newAmt = prompt('修改金額：', oldAmt);
       if (newAmt === null) return;

@@ -28,15 +28,16 @@
     .btn-submit { width: 100%; padding: 12px; background: #2563eb; color: #fff; border: none; border-radius: 8px; font-weight: bold; font-size: 1rem; cursor: pointer; }
     .btn-submit:active { background: #1d4ed8; }
 
-    /* Tab 3: 圖片樣式 Timetable */
+    /* Tab 3: Timetable */
     .timetable-container { overflow-x: auto; background: #fff; border-radius: 8px; box-shadow: 0 1px 4px rgba(0,0,0,0.08); }
     table.tt-table { width: 100%; border-collapse: collapse; min-width: 480px; text-align: center; font-size: 0.8rem; }
     table.tt-table th, table.tt-table td { border: 1px solid #cbd5e1; padding: 6px 4px; vertical-align: top; }
     table.tt-table th { background: #f1f5f9; color: #334155; }
     .weather-header { font-size: 0.75rem; color: #64748b; font-weight: normal; margin-top: 2px; }
     
-    .cell-event { background: #eff6ff; color: #1e40af; border: 1px solid #bfdbfe; border-radius: 4px; padding: 4px; font-size: 0.75rem; text-align: left; margin-bottom: 2px; }
-    .cell-gps { font-size: 0.65rem; color: #0284c7; text-decoration: none; display: block; margin-top: 2px; }
+    .cell-event { background: #eff6ff; color: #1e40af; border: 1px solid #bfdbfe; border-radius: 4px; padding: 6px; font-size: 0.75rem; text-align: left; margin-bottom: 4px; }
+    .cell-address { font-size: 0.65rem; color: #475569; margin-top: 3px; border-top: 1px dashed #cbd5e1; padding-top: 2px; }
+    .cell-gps { font-size: 0.65rem; color: #0284c7; text-decoration: none; display: inline-block; margin-top: 2px; font-weight: bold; }
 
     /* 底部 Tab 導覽列 */
     .tab-bar {
@@ -71,7 +72,7 @@
       <label>對應日期</label>
       <input type="date" id="eventDate">
 
-      <button class="btn-submit" onclick="saveEvent()">📍 標記並記錄 GPS</button>
+      <button class="btn-submit" id="btnSaveEvent" onclick="saveEvent()">📍 標記並記錄 GPS 與地址</button>
     </div>
   </div>
 
@@ -91,7 +92,7 @@
       <label>店名 / 備註 (可留空)</label>
       <input type="text" id="expShop" placeholder="例如：FamilyMart / 買藥妝">
 
-      <button class="btn-submit" style="background: #059669;" onclick="saveExpense()">💵 記錄開支</button>
+      <button class="btn-submit" id="btnSaveExpense" style="background: #059669;" onclick="saveExpense()">💵 記錄開支與地址</button>
     </div>
   </div>
 
@@ -144,7 +145,7 @@
     document.getElementById('eventDate').value = now.toISOString().split('T')[0];
     document.getElementById('eventTime').value = now.toTimeString().substring(0, 5);
 
-    // GPS Helper Function
+    // 1. GPS Helper Function
     function getGPSLocation() {
       return new Promise((resolve) => {
         if (!navigator.geolocation) return resolve(null);
@@ -154,6 +155,28 @@
           { enableHighAccuracy: true, timeout: 5000 }
         );
       });
+    }
+
+    // 2. 逆地理編碼：GPS -> 大約地址 (OpenStreetMap 免費 API)
+    async function getReadableAddress(lat, lng) {
+      try {
+        const url = `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&zoom=16&addressdetails=1&accept-language=ja,zh-TW`;
+        const res = await fetch(url);
+        const data = await res.json();
+        
+        if (data && data.address) {
+          const addr = data.address;
+          // 組合日本地址結構：例如 "東京都 新宿区" 或 "大阪府 中央区"
+          const state = addr.province || addr.state || '';
+          const city = addr.city || addr.town || addr.suburb || addr.city_district || '';
+          const road = addr.road || addr.neighbourhood || '';
+          return `${state} ${city} ${road}`.trim() || data.display_name;
+        }
+        return "未知大約地址";
+      } catch (e) {
+        console.warn("地址讀取失敗:", e);
+        return null;
+      }
     }
 
     // Tab 切換
@@ -174,15 +197,23 @@
       document.getElementById('eventDetail').focus();
     }
 
-    // 儲存打卡 (含 GPS & Reference Timestamp)
+    // 儲存打卡 (含 GPS + 大約地址)
     window.saveEvent = async function() {
       const detail = document.getElementById('eventDetail').value;
       const time = document.getElementById('eventTime').value;
       const date = document.getElementById('eventDate').value;
+      const btn = document.getElementById('btnSaveEvent');
 
       if (!detail) return alert('請輸入行程內容');
 
+      btn.innerText = "⏳ 定位與解析地址中...";
+      btn.disabled = true;
+
       const location = await getGPSLocation();
+      let address = null;
+      if (location) {
+        address = await getReadableAddress(location.lat, location.lng);
+      }
 
       try {
         await addDoc(collection(db, "log_events"), {
@@ -190,12 +221,16 @@
           eventTime: time,
           eventDate: date,
           updatedTimestamp: new Date().toISOString(),
-          location: location
+          location: location,
+          address: address // 寫入大約地址文字
         });
-        alert('打卡成功！' + (location ? ' 📍(GPS 已記錄)' : ''));
+        alert('打卡成功！' + (address ? `\n📍 位置: ${address}` : ''));
         document.getElementById('eventDetail').value = '';
       } catch (e) {
         alert('儲存失敗: ' + e.message);
+      } finally {
+        btn.innerText = "📍 標記並記錄 GPS 與地址";
+        btn.disabled = false;
       }
     }
 
@@ -204,10 +239,18 @@
       const amount = document.getElementById('expAmount').value;
       const method = document.getElementById('expMethod').value;
       const shop = document.getElementById('expShop').value;
+      const btn = document.getElementById('btnSaveExpense');
 
       if (!amount) return alert('請輸入金額');
 
+      btn.innerText = "⏳ 定位中...";
+      btn.disabled = true;
+
       const location = await getGPSLocation();
+      let address = null;
+      if (location) {
+        address = await getReadableAddress(location.lat, location.lng);
+      }
 
       try {
         await addDoc(collection(db, "expenses"), {
@@ -215,17 +258,21 @@
           paymentMethod: method,
           shopName: shop || '',
           timestamp: new Date().toISOString(),
-          location: location
+          location: location,
+          address: address
         });
         alert('記帳成功！');
         document.getElementById('expAmount').value = '';
         document.getElementById('expShop').value = '';
       } catch (e) {
         alert('儲存失敗: ' + e.message);
+      } finally {
+        btn.innerText = "💵 記錄開支與地址";
+        btn.disabled = false;
       }
     }
 
-    // 渲染 Timetable (對應圖片的 07:00 ~ 23:00)
+    // 渲染 Timetable
     async function renderTimetable() {
       const tbody = document.getElementById('timetable-body');
       tbody.innerHTML = '<tr><td colspan="4">資料載入中...</td></tr>';
@@ -240,7 +287,6 @@
           const hourStr = String(hour).padStart(2, '0');
           const timeLabel = `${hourStr}:00`;
 
-          // 匹配 2026/09/20, 21, 22 號（可依需求修改日期）
           const d1 = events.filter(e => e.eventDate.endsWith('09-20') && e.eventTime.startsWith(hourStr));
           const d2 = events.filter(e => e.eventDate.endsWith('09-21') && e.eventTime.startsWith(hourStr));
           const d3 = events.filter(e => e.eventDate.endsWith('09-22') && e.eventTime.startsWith(hourStr));
@@ -265,7 +311,8 @@
       return eventList.map(e => `
         <div class="cell-event">
           <strong>${e.eventTime}</strong> ${e.detail}
-          ${e.location ? `<a class="cell-gps" href="https://www.google.com/maps?q=${e.location.lat},${e.location.lng}" target="_blank">📍地圖</a>` : ''}
+          ${e.address ? `<div class="cell-address">📍 ${e.address}</div>` : ''}
+          ${e.location ? `<a class="cell-gps" href="https://www.google.com/maps?q=${e.location.lat},${e.location.lng}" target="_blank">開啟 Google Maps ➔</a>` : ''}
         </div>
       `).join('');
     }
